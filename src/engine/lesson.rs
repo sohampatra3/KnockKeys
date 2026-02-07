@@ -29,25 +29,35 @@ const QUOTES: &[&str] = &[
     "clear feedback turns repetition into deliberate practice.",
 ];
 
-pub fn coach_hint(target: char) -> (&'static str, &'static str) {
-    let finger = finger_for_char(target);
-    let t = target.to_ascii_lowercase();
-    let guidance = if "asdfjkl;".contains(t) {
-        "Home row anchor"
-    } else if "qwertyuiop[]\\".contains(t) {
-        "Top row reach"
-    } else if "zxcvbnm,./".contains(t) {
-        "Bottom row reach"
-    } else if t == ' ' {
-        "Tap space with thumb"
+pub fn coach_hint(target: char) -> (String, String) {
+    let finger = finger_for_char(target).to_string();
+    let base = primary_key_for_char(target);
+    let mut guidance = if "asdfjkl;".contains(base) {
+        "Home row anchor".to_string()
+    } else if "qwertyuiop[]\\1234567890-=`".contains(base) {
+        "Top row reach".to_string()
+    } else if "zxcvbnm,./".contains(base) {
+        "Bottom row reach".to_string()
+    } else if base == ' ' {
+        "Tap space with thumb".to_string()
     } else {
-        "Keep wrists neutral and return to home row"
+        "Keep wrists neutral and return to home row".to_string()
     };
+
+    if requires_shift(target) {
+        let shift = match key_hand(base) {
+            Some(Hand::Left) => "Use Right Shift (right pinky)",
+            Some(Hand::Right) => "Use Left Shift (left pinky)",
+            None => "Use opposite-hand Shift",
+        };
+        guidance = format!("{guidance}; {shift}");
+    }
+
     (finger, guidance)
 }
 
 pub fn finger_for_char(c: char) -> &'static str {
-    match c.to_ascii_lowercase() {
+    match primary_key_for_char(c) {
         'q' | 'a' | 'z' | '`' | '1' => "Left pinky",
         'w' | 's' | 'x' | '2' => "Left ring",
         'e' | 'd' | 'c' | '3' => "Left middle",
@@ -55,9 +65,79 @@ pub fn finger_for_char(c: char) -> &'static str {
         'y' | 'h' | 'n' | 'u' | 'j' | 'm' | '6' | '7' => "Right index",
         'i' | 'k' | ',' | '8' => "Right middle",
         'o' | 'l' | '.' | '9' => "Right ring",
-        'p' | ';' | '/' | '[' | ']' | '\\' | '-' | '=' | '0' => "Right pinky",
+        'p' | ';' | '\'' | '/' | '[' | ']' | '\\' | '-' | '=' | '0' => "Right pinky",
         ' ' => "Thumb",
         _ => "Unknown",
+    }
+}
+
+pub fn primary_key_for_char(c: char) -> char {
+    match c {
+        '~' => '`',
+        '!' => '1',
+        '@' => '2',
+        '#' => '3',
+        '$' => '4',
+        '%' => '5',
+        '^' => '6',
+        '&' => '7',
+        '*' => '8',
+        '(' => '9',
+        ')' => '0',
+        '_' => '-',
+        '+' => '=',
+        '{' => '[',
+        '}' => ']',
+        '|' => '\\',
+        ':' => ';',
+        '"' => '\'',
+        '<' => ',',
+        '>' => '.',
+        '?' => '/',
+        _ => c.to_ascii_lowercase(),
+    }
+}
+
+fn requires_shift(c: char) -> bool {
+    c.is_ascii_uppercase()
+        || matches!(
+            c,
+            '~' | '!'
+                | '@'
+                | '#'
+                | '$'
+                | '%'
+                | '^'
+                | '&'
+                | '*'
+                | '('
+                | ')'
+                | '_'
+                | '+'
+                | '{'
+                | '}'
+                | '|'
+                | ':'
+                | '"'
+                | '<'
+                | '>'
+                | '?'
+        )
+}
+
+#[derive(Clone, Copy)]
+enum Hand {
+    Left,
+    Right,
+}
+
+fn key_hand(base: char) -> Option<Hand> {
+    match base {
+        'q' | 'a' | 'z' | '`' | '1' | 'w' | 's' | 'x' | '2' | 'e' | 'd' | 'c' | '3' | 'r' | 'f'
+        | 'v' | 't' | 'g' | 'b' | '4' | '5' => Some(Hand::Left),
+        'y' | 'h' | 'n' | 'u' | 'j' | 'm' | '6' | '7' | 'i' | 'k' | ',' | '8' | 'o' | 'l' | '.'
+        | '9' | 'p' | ';' | '\'' | '/' | '[' | ']' | '\\' | '-' | '=' | '0' => Some(Hand::Right),
+        _ => None,
     }
 }
 

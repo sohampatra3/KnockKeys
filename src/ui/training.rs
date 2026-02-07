@@ -299,7 +299,7 @@ pub fn render_pause_overlay(frame: &mut Frame<'_>, app: &App, p: Palette) {
 fn key_style(key: char, target: Option<char>, p: Palette) -> Style {
     let target_match = match target {
         Some(' ') => key == ' ',
-        Some(t) => key.eq_ignore_ascii_case(&t),
+        Some(t) => lesson::primary_key_for_char(t) == key,
         None => false,
     };
 
