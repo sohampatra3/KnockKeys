@@ -1,4 +1,4 @@
-use crate::models::{ProgressData, Settings, TestConfig};
+use crate::models::{CodeConfig, ProgressData, Settings, TestConfig};
 use anyhow::{Context, Result};
 use chrono::Local;
 use csv::Writer;
@@ -20,6 +20,8 @@ pub struct PersistedState {
     pub settings: Settings,
     pub progress: ProgressData,
     pub test_config: TestConfig,
+    #[serde(default)]
+    pub code_config: CodeConfig,
 }
 
 impl Default for PersistedState {
@@ -28,6 +30,7 @@ impl Default for PersistedState {
             settings: Settings::default(),
             progress: ProgressData::default(),
             test_config: TestConfig::default(),
+            code_config: CodeConfig::default(),
         }
     }
 }
@@ -111,11 +114,18 @@ pub fn save_state(paths: &StoragePaths, state: &PersistedState) -> Result<()> {
     Ok(())
 }
 
-pub fn export_sessions_csv(paths: &StoragePaths, state: &PersistedState, out: Option<&Path>) -> Result<PathBuf> {
+pub fn export_sessions_csv(
+    paths: &StoragePaths,
+    state: &PersistedState,
+    out: Option<&Path>,
+) -> Result<PathBuf> {
     ensure_dirs(paths)?;
-    let path = out
-        .map(Path::to_path_buf)
-        .unwrap_or_else(|| paths.exports_dir.join(format!("sessions-{}.csv", Local::now().format("%Y%m%d-%H%M%S"))));
+    let path = out.map(Path::to_path_buf).unwrap_or_else(|| {
+        paths.exports_dir.join(format!(
+            "sessions-{}.csv",
+            Local::now().format("%Y%m%d-%H%M%S")
+        ))
+    });
 
     let mut writer = Writer::from_path(&path)
         .with_context(|| format!("Failed creating CSV at {}", path.display()))?;
@@ -123,6 +133,8 @@ pub fn export_sessions_csv(paths: &StoragePaths, state: &PersistedState, out: Op
     writer.write_record([
         "started_at",
         "mode",
+        "code_language",
+        "code_topic",
         "duration_secs",
         "wpm",
         "accuracy",
@@ -135,6 +147,12 @@ pub fn export_sessions_csv(paths: &StoragePaths, state: &PersistedState, out: Op
         writer.write_record([
             s.started_at.to_rfc3339(),
             s.mode.title().to_string(),
+            s.code_language
+                .map(|l| l.title().to_string())
+                .unwrap_or_default(),
+            s.code_topic
+                .map(|t| t.title().to_string())
+                .unwrap_or_default(),
             s.duration_secs.to_string(),
             format!("{:.2}", s.wpm),
             format!("{:.2}", s.accuracy),
@@ -148,12 +166,17 @@ pub fn export_sessions_csv(paths: &StoragePaths, state: &PersistedState, out: Op
     Ok(path)
 }
 
-pub fn backup_progress(paths: &StoragePaths, state: &PersistedState, out: Option<&Path>) -> Result<PathBuf> {
+pub fn backup_progress(
+    paths: &StoragePaths,
+    state: &PersistedState,
+    out: Option<&Path>,
+) -> Result<PathBuf> {
     ensure_dirs(paths)?;
     let path = out.map(Path::to_path_buf).unwrap_or_else(|| {
-        paths
-            .backups_dir
-            .join(format!("progress-{}.json", Local::now().format("%Y%m%d-%H%M%S")))
+        paths.backups_dir.join(format!(
+            "progress-{}.json",
+            Local::now().format("%Y%m%d-%H%M%S")
+        ))
     });
 
     let serialized = serde_json::to_string_pretty(state).context("Failed to serialize backup")?;

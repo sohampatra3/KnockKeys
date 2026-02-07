@@ -57,12 +57,20 @@ pub fn render_progress(frame: &mut Frame<'_>, app: &App, p: Palette) {
 
     let recent = Paragraph::new(recent_lines)
         .wrap(Wrap { trim: false })
-        .block(Block::default().title(" Recent Sessions ").borders(Borders::ALL));
+        .block(
+            Block::default()
+                .title(" Recent Sessions ")
+                .borders(Borders::ALL),
+        );
     frame.render_widget(recent, mid[0]);
 
     let heatmap = Paragraph::new(heatmap_lines(app, p))
         .wrap(Wrap { trim: false })
-        .block(Block::default().title(" Per-key Heatmap (error rate) ").borders(Borders::ALL));
+        .block(
+            Block::default()
+                .title(" Per-key Heatmap (error rate) ")
+                .borders(Borders::ALL),
+        );
     frame.render_widget(heatmap, mid[1]);
 
     let bottom = Layout::default()
@@ -83,15 +91,25 @@ pub fn render_progress(frame: &mut Frame<'_>, app: &App, p: Palette) {
         .collect();
 
     let graph = Sparkline::default()
-        .block(Block::default().title(" WPM Trend (last 10) ").borders(Borders::ALL))
+        .block(
+            Block::default()
+                .title(" WPM Trend (last 10) ")
+                .borders(Borders::ALL),
+        )
         .style(Style::default().fg(p.accent))
         .data(&trend_data);
     frame.render_widget(graph, bottom[0]);
 
-    let slowest = slowest_keys(app);
-    let slow_panel = Paragraph::new(slowest)
-        .wrap(Wrap { trim: true })
-        .block(Block::default().title(" Slowest Keys ").borders(Borders::ALL));
+    let slowest = format!(
+        "Slowest keys:\n{}\n\nLanguage speed:\n{}",
+        slowest_keys(app),
+        language_speed_summary(app)
+    );
+    let slow_panel = Paragraph::new(slowest).wrap(Wrap { trim: true }).block(
+        Block::default()
+            .title(" Key + Language Stats ")
+            .borders(Borders::ALL),
+    );
     frame.render_widget(slow_panel, bottom[1]);
 
     let footer = Paragraph::new("Esc: Back to home")
@@ -161,4 +179,35 @@ fn slowest_keys(app: &App) -> String {
         .map(|(c, ms)| format!("{}: {:.0}ms", c, ms))
         .collect::<Vec<_>>()
         .join("\n")
+}
+
+fn language_speed_summary(app: &App) -> String {
+    let mut rows: Vec<(String, f64, f64)> = app
+        .progress
+        .language_stats
+        .iter()
+        .map(|(k, v)| (k.clone(), v.avg_wpm(), v.best_wpm))
+        .collect();
+    rows.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    if rows.is_empty() {
+        return "No language drills yet".to_string();
+    }
+
+    rows.into_iter()
+        .take(5)
+        .map(|(k, avg, best)| format!("{}: avg {:.1} / best {:.1}", pretty_lang_key(&k), avg, best))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn pretty_lang_key(key: &str) -> &str {
+    match key {
+        "cpp" => "C++",
+        "c" => "C",
+        "rust" => "Rust",
+        "python" => "Python",
+        "go" => "Go",
+        _ => key,
+    }
 }

@@ -1,3 +1,4 @@
+pub mod code;
 pub mod home;
 pub mod settings;
 pub mod stats;
@@ -55,6 +56,36 @@ pub fn palette(theme: ColorTheme) -> Palette {
             danger: Color::Rgb(236, 95, 98),
             warning: Color::Rgb(232, 201, 101),
         },
+        ColorTheme::Slate => Palette {
+            background: Color::Rgb(21, 24, 30),
+            panel: Color::Rgb(35, 42, 52),
+            text: Color::Rgb(227, 232, 240),
+            muted: Color::Rgb(138, 152, 173),
+            accent: Color::Rgb(119, 177, 255),
+            success: Color::Rgb(123, 214, 156),
+            danger: Color::Rgb(244, 114, 114),
+            warning: Color::Rgb(251, 191, 84),
+        },
+        ColorTheme::Solarized => Palette {
+            background: Color::Rgb(0, 43, 54),
+            panel: Color::Rgb(7, 54, 66),
+            text: Color::Rgb(238, 232, 213),
+            muted: Color::Rgb(147, 161, 161),
+            accent: Color::Rgb(38, 139, 210),
+            success: Color::Rgb(133, 153, 0),
+            danger: Color::Rgb(220, 50, 47),
+            warning: Color::Rgb(181, 137, 0),
+        },
+        ColorTheme::Neon => Palette {
+            background: Color::Rgb(9, 10, 20),
+            panel: Color::Rgb(19, 22, 38),
+            text: Color::Rgb(231, 255, 247),
+            muted: Color::Rgb(121, 142, 150),
+            accent: Color::Rgb(53, 255, 196),
+            success: Color::Rgb(77, 242, 107),
+            danger: Color::Rgb(255, 88, 122),
+            warning: Color::Rgb(255, 212, 77),
+        },
     }
 }
 
@@ -64,6 +95,7 @@ pub fn render(frame: &mut Frame<'_>, app: &App) {
     match app.screen {
         Screen::Home => home::render_home(frame, app, p),
         Screen::Lessons => home::render_lessons(frame, app, p),
+        Screen::CodeConfig => code::render_code_config(frame, app, p),
         Screen::Training | Screen::TypingTest => training::render_session(frame, app, p),
         Screen::TypingTestConfig => test::render_config(frame, app, p),
         Screen::Progress => stats::render_progress(frame, app, p),

@@ -1,12 +1,13 @@
-use crate::engine::{lesson, metrics};
+use crate::engine::{code, lesson, metrics};
 use crate::input::keys::{translate, Action};
 use crate::models::{
-    HomeItem, LessonItem, PauseItem, ProgressData, Screen, SessionMode, SessionResult, SessionSummary,
-    Settings, SettingsItem, TestConfig, TestDuration, TestTextType, TrainingDifficulty, TypedEntry,
+    CodeConfig, HomeItem, LessonItem, PauseItem, ProgressData, Screen, SessionMode, SessionResult,
+    SessionSummary, Settings, SettingsItem, TestConfig, TestDuration, TestTextType,
+    TrainingDifficulty, TypedEntry,
 };
 use crate::storage::persistence::{
-    backup_progress, export_sessions_csv, import_progress, latest_backup, save_state, PersistedState,
-    StoragePaths,
+    backup_progress, export_sessions_csv, import_progress, latest_backup, save_state,
+    PersistedState, StoragePaths,
 };
 use chrono::Local;
 use crossterm::event::KeyEvent;
@@ -16,9 +17,16 @@ use std::time::{Duration, Instant};
 #[derive(Debug, Clone)]
 pub enum SessionPlan {
     AdaptiveTraining,
-    Lesson { keys: Vec<char>, label: String },
+    Lesson {
+        keys: Vec<char>,
+        label: String,
+    },
     WeakDrill,
     TypingTest(TestConfig),
+    CodeDrill {
+        language: crate::models::LanguageMode,
+        topic: crate::models::CodeTopic,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -75,9 +83,11 @@ pub struct App {
     pub settings_index: usize,
     pub pause_index: usize,
     pub test_config_index: usize,
+    pub code_config_index: usize,
     pub settings: Settings,
     pub progress: ProgressData,
     pub test_config: TestConfig,
+    pub code_config: CodeConfig,
     pub active_session: Option<ActiveSession>,
     pub summary: Option<SessionSummary>,
     pub notification: Option<(String, Instant)>,
@@ -88,7 +98,8 @@ pub struct App {
 
 impl App {
     pub fn new(state: PersistedState, storage_paths: StoragePaths) -> Self {
-        let seed_counter = state.progress.total_chars_typed + state.progress.session_history.len() as u64;
+        let seed_counter =
+            state.progress.total_chars_typed + state.progress.session_history.len() as u64;
         Self {
             running: true,
             screen: Screen::Home,
@@ -97,9 +108,11 @@ impl App {
             settings_index: 0,
             pause_index: 0,
             test_config_index: 0,
+            code_config_index: 0,
             settings: state.settings,
             progress: state.progress,
             test_config: state.test_config,
+            code_config: state.code_config,
             active_session: None,
             summary: None,
             notification: None,
@@ -119,6 +132,7 @@ impl App {
             settings: self.settings.clone(),
             progress: self.progress.clone(),
             test_config: self.test_config.clone(),
+            code_config: self.code_config.clone(),
         }
     }
 
@@ -135,7 +149,12 @@ impl App {
 
     pub fn today_goal_progress(&self) -> (u32, u32) {
         let today = ProgressData::today_key();
-        let done = self.progress.daily_minutes.get(&today).copied().unwrap_or(0);
+        let done = self
+            .progress
+            .daily_minutes
+            .get(&today)
+            .copied()
+            .unwrap_or(0);
         (done, self.settings.daily_goal_minutes)
     }
 
@@ -204,6 +223,13 @@ impl App {
                     self.test_config_index - 1
                 }
             }
+            Screen::CodeConfig => {
+                self.code_config_index = if self.code_config_index == 0 {
+                    3
+                } else {
+                    self.code_config_index - 1
+                }
+            }
             _ => {}
         }
     }
@@ -217,6 +243,7 @@ impl App {
             }
             Screen::Pause => self.pause_index = (self.pause_index + 1) % PauseItem::ALL.len(),
             Screen::TypingTestConfig => self.test_config_index = (self.test_config_index + 1) % 4,
+            Screen::CodeConfig => self.code_config_index = (self.code_config_index + 1) % 4,
             _ => {}
         }
     }
@@ -224,6 +251,7 @@ impl App {
     fn adjust_current(&mut self, forward: bool) {
         match self.screen {
             Screen::TypingTestConfig => self.adjust_test_config(forward),
+            Screen::CodeConfig => self.adjust_code_config(forward),
             Screen::Settings => self.adjust_setting(forward),
             _ => {}
         }
@@ -243,14 +271,31 @@ impl App {
         }
     }
 
+    fn adjust_code_config(&mut self, forward: bool) {
+        match self.code_config_index {
+            0 => {
+                self.code_config.language = cycle_language(self.code_config.language, forward);
+                self.save();
+            }
+            1 => {
+                self.code_config.topic = cycle_code_topic(self.code_config.topic, forward);
+                self.save();
+            }
+            _ => {}
+        }
+    }
+
     fn adjust_setting(&mut self, forward: bool) {
         let selected = &SettingsItem::ALL[self.settings_index];
         match selected {
-            SettingsItem::ShowKeyboard => self.settings.show_keyboard = !self.settings.show_keyboard,
+            SettingsItem::ShowKeyboard => {
+                self.settings.show_keyboard = !self.settings.show_keyboard
+            }
             SettingsItem::Theme => self.settings.theme = cycle_theme(self.settings.theme, forward),
             SettingsItem::Sound => self.settings.sound_on_error = !self.settings.sound_on_error,
             SettingsItem::Difficulty => {
-                self.settings.difficulty = if self.settings.difficulty == TrainingDifficulty::Strict {
+                self.settings.difficulty = if self.settings.difficulty == TrainingDifficulty::Strict
+                {
                     TrainingDifficulty::FreeFlow
                 } else {
                     TrainingDifficulty::Strict
@@ -277,8 +322,10 @@ impl App {
                 }
                 self.settings.daily_goal_minutes = value as u32;
             }
-            SettingsItem::ExportCsv | SettingsItem::Backup | SettingsItem::Import | SettingsItem::Back => {
-            }
+            SettingsItem::ExportCsv
+            | SettingsItem::Backup
+            | SettingsItem::Import
+            | SettingsItem::Back => {}
         }
         self.save();
     }
@@ -290,6 +337,7 @@ impl App {
             Screen::Settings => self.select_settings(),
             Screen::Pause => self.select_pause(),
             Screen::TypingTestConfig => self.select_test_config(),
+            Screen::CodeConfig => self.select_code_config(),
             Screen::SessionSummary => {
                 self.summary = None;
                 self.screen = Screen::Home;
@@ -302,6 +350,7 @@ impl App {
     fn select_home(&mut self) {
         match HomeItem::ALL[self.home_index] {
             HomeItem::StartTraining => self.start_adaptive_training(),
+            HomeItem::CodeDrill => self.screen = Screen::CodeConfig,
             HomeItem::TypingTest => self.screen = Screen::TypingTestConfig,
             HomeItem::Lessons => self.screen = Screen::Lessons,
             HomeItem::Progress => self.screen = Screen::Progress,
@@ -319,16 +368,16 @@ impl App {
                 let keys: Vec<char> = "asdfjkl;".chars().collect();
                 self.start_lesson(keys, "Guided Home Row", SessionMode::LessonPractice);
             }
-            LessonItem::TopRow => {
-                self.start_lesson(lesson::lesson_top_row(), "Top Row Focus", SessionMode::LessonPractice)
-            }
-            LessonItem::BottomRow => {
-                self.start_lesson(
-                    lesson::lesson_bottom_row(),
-                    "Bottom Row Focus",
-                    SessionMode::LessonPractice,
-                )
-            }
+            LessonItem::TopRow => self.start_lesson(
+                lesson::lesson_top_row(),
+                "Top Row Focus",
+                SessionMode::LessonPractice,
+            ),
+            LessonItem::BottomRow => self.start_lesson(
+                lesson::lesson_bottom_row(),
+                "Bottom Row Focus",
+                SessionMode::LessonPractice,
+            ),
             LessonItem::WeakKeysDrill => self.start_weak_keys_drill(),
             LessonItem::Back => self.screen = Screen::Home,
         }
@@ -338,6 +387,14 @@ impl App {
         match self.test_config_index {
             0 | 1 => self.adjust_test_config(true),
             2 => self.start_typing_test(),
+            _ => self.screen = Screen::Home,
+        }
+    }
+
+    fn select_code_config(&mut self) {
+        match self.code_config_index {
+            0 | 1 => self.adjust_code_config(true),
+            2 => self.start_code_drill(),
             _ => self.screen = Screen::Home,
         }
     }
@@ -359,21 +416,19 @@ impl App {
                     Err(err) => self.set_notice(format!("Backup failed: {err}")),
                 }
             }
-            SettingsItem::Import => {
-                match latest_backup(&self.storage_paths) {
-                    Ok(Some(path)) => match import_progress(&self.storage_paths, &path) {
-                        Ok(state) => {
-                            self.settings = state.settings;
-                            self.progress = state.progress;
-                            self.test_config = state.test_config;
-                            self.set_notice(format!("Imported: {}", path.display()));
-                        }
-                        Err(err) => self.set_notice(format!("Import failed: {err}")),
-                    },
-                    Ok(None) => self.set_notice("No backup file found"),
+            SettingsItem::Import => match latest_backup(&self.storage_paths) {
+                Ok(Some(path)) => match import_progress(&self.storage_paths, &path) {
+                    Ok(state) => {
+                        self.settings = state.settings;
+                        self.progress = state.progress;
+                        self.test_config = state.test_config;
+                        self.set_notice(format!("Imported: {}", path.display()));
+                    }
                     Err(err) => self.set_notice(format!("Import failed: {err}")),
-                }
-            }
+                },
+                Ok(None) => self.set_notice("No backup file found"),
+                Err(err) => self.set_notice(format!("Import failed: {err}")),
+            },
             SettingsItem::Back => self.screen = Screen::Home,
             _ => self.adjust_setting(true),
         }
@@ -396,9 +451,11 @@ impl App {
                 self.running = false;
                 self.save();
             }
-            Screen::Lessons | Screen::Progress | Screen::Settings | Screen::TypingTestConfig => {
-                self.screen = Screen::Home
-            }
+            Screen::Lessons
+            | Screen::Progress
+            | Screen::Settings
+            | Screen::TypingTestConfig
+            | Screen::CodeConfig => self.screen = Screen::Home,
             Screen::Pause => self.resume_current(),
             Screen::SessionSummary => {
                 self.summary = None;
@@ -475,6 +532,30 @@ impl App {
         );
     }
 
+    fn start_code_drill(&mut self) {
+        let seed = self.next_seed();
+        let text = code::generate_code_drill_text(
+            self.code_config.language,
+            self.code_config.topic,
+            4,
+            seed,
+        );
+        self.start_session(
+            SessionPlan::CodeDrill {
+                language: self.code_config.language,
+                topic: self.code_config.topic,
+            },
+            SessionMode::CodeDrill,
+            format!(
+                "{} {}",
+                self.code_config.language.title(),
+                self.code_config.topic.title()
+            ),
+            text,
+            None,
+        );
+    }
+
     fn start_session(
         &mut self,
         plan: SessionPlan,
@@ -484,7 +565,8 @@ impl App {
         time_limit: Option<Duration>,
     ) {
         let now = Instant::now();
-        let strict_active = self.settings.difficulty == TrainingDifficulty::Strict && mode != SessionMode::TypingTest;
+        let strict_active = self.settings.difficulty == TrainingDifficulty::Strict
+            && mode != SessionMode::TypingTest;
 
         self.active_session = Some(ActiveSession {
             plan,
@@ -554,8 +636,8 @@ impl App {
                 .or_default();
             metrics::update_key_stat(key_stat, correct, delta_ms.max(1));
 
-            let strict_active =
-                self.settings.difficulty == TrainingDifficulty::Strict && session.mode != SessionMode::TypingTest;
+            let strict_active = self.settings.difficulty == TrainingDifficulty::Strict
+                && session.mode != SessionMode::TypingTest;
 
             if !correct {
                 *session.misses_by_key.entry(expected).or_insert(0) += 1;
@@ -647,11 +729,18 @@ impl App {
 
         match session.plan {
             SessionPlan::AdaptiveTraining => self.start_adaptive_training(),
-            SessionPlan::Lesson { keys, label } => self.start_lesson(keys, &label, SessionMode::LessonPractice),
+            SessionPlan::Lesson { keys, label } => {
+                self.start_lesson(keys, &label, SessionMode::LessonPractice)
+            }
             SessionPlan::WeakDrill => self.start_weak_keys_drill(),
             SessionPlan::TypingTest(config) => {
                 self.test_config = config;
                 self.start_typing_test();
+            }
+            SessionPlan::CodeDrill { language, topic } => {
+                self.code_config.language = language;
+                self.code_config.topic = topic;
+                self.start_code_drill();
             }
         }
     }
@@ -699,9 +788,15 @@ impl App {
         let snapshot = metrics::compute_live(&session.typed, elapsed, session.blocked_errors);
         let problematic = metrics::problematic_keys(&session.typed, &session.misses_by_key);
         let mut unlocked_new_key = None;
+        let (code_language, code_topic) = match &session.plan {
+            SessionPlan::CodeDrill { language, topic } => (Some(*language), Some(*topic)),
+            _ => (None, None),
+        };
 
-        if matches!(session.mode, SessionMode::Training | SessionMode::LessonPractice)
-            && snapshot.accuracy >= self.settings.unlock_accuracy_threshold
+        if matches!(
+            session.mode,
+            SessionMode::Training | SessionMode::LessonPractice
+        ) && snapshot.accuracy >= self.settings.unlock_accuracy_threshold
             && snapshot.wpm >= self.settings.unlock_wpm_threshold
         {
             unlocked_new_key = lesson::maybe_unlock_next(
@@ -721,6 +816,8 @@ impl App {
             problematic_keys: problematic.clone(),
             wpm_samples: session.wpm_samples.clone(),
             unlocked_new_key,
+            code_language,
+            code_topic,
         };
 
         let result = SessionResult {
@@ -733,6 +830,8 @@ impl App {
             chars_typed: (session.typed.len() as u64).saturating_add(session.blocked_errors),
             problematic_keys: problematic,
             wpm_samples: session.wpm_samples,
+            code_language,
+            code_topic,
         };
 
         self.progress.push_session(result);
@@ -775,7 +874,14 @@ fn cycle_text_type(current: TestTextType, forward: bool) -> TestTextType {
 
 fn cycle_theme(current: crate::models::ColorTheme, forward: bool) -> crate::models::ColorTheme {
     use crate::models::ColorTheme;
-    const ALL: [ColorTheme; 3] = [ColorTheme::Ocean, ColorTheme::Ember, ColorTheme::Forest];
+    const ALL: [ColorTheme; 6] = [
+        ColorTheme::Ocean,
+        ColorTheme::Ember,
+        ColorTheme::Forest,
+        ColorTheme::Slate,
+        ColorTheme::Solarized,
+        ColorTheme::Neon,
+    ];
     let idx = ALL.iter().position(|t| *t == current).unwrap_or(0);
     if forward {
         ALL[(idx + 1) % ALL.len()]
@@ -783,6 +889,35 @@ fn cycle_theme(current: crate::models::ColorTheme, forward: bool) -> crate::mode
         ALL[ALL.len() - 1]
     } else {
         ALL[idx - 1]
+    }
+}
+
+fn cycle_language(
+    current: crate::models::LanguageMode,
+    forward: bool,
+) -> crate::models::LanguageMode {
+    use crate::models::LanguageMode;
+    let all = LanguageMode::ALL;
+    let idx = all.iter().position(|v| *v == current).unwrap_or(0);
+    if forward {
+        all[(idx + 1) % all.len()]
+    } else if idx == 0 {
+        all[all.len() - 1]
+    } else {
+        all[idx - 1]
+    }
+}
+
+fn cycle_code_topic(current: crate::models::CodeTopic, forward: bool) -> crate::models::CodeTopic {
+    use crate::models::CodeTopic;
+    let all = CodeTopic::ALL;
+    let idx = all.iter().position(|v| *v == current).unwrap_or(0);
+    if forward {
+        all[(idx + 1) % all.len()]
+    } else if idx == 0 {
+        all[all.len() - 1]
+    } else {
+        all[idx - 1]
     }
 }
 

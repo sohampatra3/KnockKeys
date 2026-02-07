@@ -37,6 +37,10 @@ Progress is saved locally at:
 - Daily Goal tracking (minutes per day)
 - Session recap screen with problematic keys and WPM sparkline
 - Export stats to CSV + backup/import JSON
+- Code Drill mode with per-language speed tracking:
+  - Languages: C++, C, Rust, Python, Go
+  - Topics: loops, if/else, sorting, searching, mixed
+- Expanded themes: Ocean, Ember, Forest, Slate, Solarized, Neon
 
 ## ASCII sample (home)
 

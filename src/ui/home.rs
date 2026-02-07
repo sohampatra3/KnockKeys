@@ -47,11 +47,17 @@ pub fn render_home(frame: &mut Frame<'_>, app: &App, p: Palette) {
         .map(|(idx, item)| {
             let selected = idx == app.home_index;
             let style = if selected {
-                Style::default().fg(Color::Black).bg(p.accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(p.accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(p.text)
             };
-            ListItem::new(Line::from(Span::styled(format!("  {}", item.title()), style)))
+            ListItem::new(Line::from(Span::styled(
+                format!("  {}", item.title()),
+                style,
+            )))
         })
         .collect();
 
@@ -104,7 +110,11 @@ pub fn render_home(frame: &mut Frame<'_>, app: &App, p: Palette) {
 pub fn render_lessons(frame: &mut Frame<'_>, app: &App, p: Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(10), Constraint::Length(4)])
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(10),
+            Constraint::Length(4),
+        ])
         .split(frame.size());
 
     let title = Paragraph::new("Lessons & Key Practice")
@@ -123,16 +133,26 @@ pub fn render_lessons(frame: &mut Frame<'_>, app: &App, p: Palette) {
         .map(|(idx, item)| {
             let selected = idx == app.lesson_index;
             let style = if selected {
-                Style::default().fg(Color::Black).bg(p.accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(p.accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(p.text)
             };
-            ListItem::new(Line::from(Span::styled(format!("  {}", item.title()), style)))
+            ListItem::new(Line::from(Span::styled(
+                format!("  {}", item.title()),
+                style,
+            )))
         })
         .collect();
 
     frame.render_widget(
-        List::new(items).block(Block::default().title(" Lesson Menu ").borders(Borders::ALL)),
+        List::new(items).block(
+            Block::default()
+                .title(" Lesson Menu ")
+                .borders(Borders::ALL),
+        ),
         body[0],
     );
 
@@ -155,7 +175,11 @@ pub fn render_lessons(frame: &mut Frame<'_>, app: &App, p: Palette) {
         app.settings.difficulty.title()
     ))
     .wrap(Wrap { trim: true })
-    .block(Block::default().title(" Lesson Details ").borders(Borders::ALL));
+    .block(
+        Block::default()
+            .title(" Lesson Details ")
+            .borders(Borders::ALL),
+    );
     frame.render_widget(right, body[1]);
 
     let footer = Paragraph::new("Enter: Start  |  Esc: Back  |  Up/Down or j/k: Navigate")

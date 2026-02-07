@@ -7,6 +7,7 @@ pub enum Screen {
     Home,
     Training,
     TypingTestConfig,
+    CodeConfig,
     TypingTest,
     Lessons,
     Progress,
@@ -18,6 +19,7 @@ pub enum Screen {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HomeItem {
     StartTraining,
+    CodeDrill,
     TypingTest,
     Lessons,
     Progress,
@@ -26,8 +28,9 @@ pub enum HomeItem {
 }
 
 impl HomeItem {
-    pub const ALL: [HomeItem; 6] = [
+    pub const ALL: [HomeItem; 7] = [
         HomeItem::StartTraining,
+        HomeItem::CodeDrill,
         HomeItem::TypingTest,
         HomeItem::Lessons,
         HomeItem::Progress,
@@ -38,6 +41,7 @@ impl HomeItem {
     pub fn title(self) -> &'static str {
         match self {
             HomeItem::StartTraining => "Start Training",
+            HomeItem::CodeDrill => "Code Drill Mode",
             HomeItem::TypingTest => "Typing Test",
             HomeItem::Lessons => "Lessons (Key Practice)",
             HomeItem::Progress => "Progress & Stats",
@@ -115,6 +119,9 @@ pub enum ColorTheme {
     Ocean,
     Ember,
     Forest,
+    Slate,
+    Solarized,
+    Neon,
 }
 
 impl ColorTheme {
@@ -123,6 +130,9 @@ impl ColorTheme {
             ColorTheme::Ocean => "Ocean",
             ColorTheme::Ember => "Ember",
             ColorTheme::Forest => "Forest",
+            ColorTheme::Slate => "Slate",
+            ColorTheme::Solarized => "Solarized",
+            ColorTheme::Neon => "Neon",
         }
     }
 }
@@ -133,6 +143,7 @@ pub enum SessionMode {
     TypingTest,
     LessonPractice,
     WeakKeysDrill,
+    CodeDrill,
 }
 
 impl SessionMode {
@@ -142,6 +153,75 @@ impl SessionMode {
             SessionMode::TypingTest => "Typing Test",
             SessionMode::LessonPractice => "Lesson Practice",
             SessionMode::WeakKeysDrill => "Weak Keys Drill",
+            SessionMode::CodeDrill => "Code Drill",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum LanguageMode {
+    Cpp,
+    C,
+    Rust,
+    Python,
+    Go,
+}
+
+impl LanguageMode {
+    pub const ALL: [LanguageMode; 5] = [
+        LanguageMode::Cpp,
+        LanguageMode::C,
+        LanguageMode::Rust,
+        LanguageMode::Python,
+        LanguageMode::Go,
+    ];
+
+    pub fn title(self) -> &'static str {
+        match self {
+            LanguageMode::Cpp => "C++",
+            LanguageMode::C => "C",
+            LanguageMode::Rust => "Rust",
+            LanguageMode::Python => "Python",
+            LanguageMode::Go => "Go",
+        }
+    }
+
+    pub fn key(self) -> &'static str {
+        match self {
+            LanguageMode::Cpp => "cpp",
+            LanguageMode::C => "c",
+            LanguageMode::Rust => "rust",
+            LanguageMode::Python => "python",
+            LanguageMode::Go => "go",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CodeTopic {
+    Loops,
+    IfElse,
+    Sorting,
+    Searching,
+    Mixed,
+}
+
+impl CodeTopic {
+    pub const ALL: [CodeTopic; 5] = [
+        CodeTopic::Loops,
+        CodeTopic::IfElse,
+        CodeTopic::Sorting,
+        CodeTopic::Searching,
+        CodeTopic::Mixed,
+    ];
+
+    pub fn title(self) -> &'static str {
+        match self {
+            CodeTopic::Loops => "Loops",
+            CodeTopic::IfElse => "If / Else",
+            CodeTopic::Sorting => "Sorting",
+            CodeTopic::Searching => "Searching",
+            CodeTopic::Mixed => "Mixed",
         }
     }
 }
@@ -209,6 +289,21 @@ impl Default for TestConfig {
         Self {
             duration: TestDuration::Sec60,
             text_type: TestTextType::RandomWords,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CodeConfig {
+    pub language: LanguageMode,
+    pub topic: CodeTopic,
+}
+
+impl Default for CodeConfig {
+    fn default() -> Self {
+        Self {
+            language: LanguageMode::Rust,
+            topic: CodeTopic::Mixed,
         }
     }
 }
@@ -284,6 +379,35 @@ pub struct SessionResult {
     pub chars_typed: u64,
     pub problematic_keys: Vec<char>,
     pub wpm_samples: Vec<f64>,
+    pub code_language: Option<LanguageMode>,
+    pub code_topic: Option<CodeTopic>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct LanguageSpeedStat {
+    pub sessions: u64,
+    pub total_wpm: f64,
+    pub best_wpm: f64,
+    pub total_chars: u64,
+    pub total_secs: u64,
+}
+
+impl LanguageSpeedStat {
+    pub fn avg_wpm(&self) -> f64 {
+        if self.sessions == 0 {
+            0.0
+        } else {
+            self.total_wpm / self.sessions as f64
+        }
+    }
+
+    pub fn apply_session(&mut self, session: &SessionResult) {
+        self.sessions += 1;
+        self.total_wpm += session.wpm;
+        self.best_wpm = self.best_wpm.max(session.wpm);
+        self.total_chars += session.chars_typed;
+        self.total_secs += session.duration_secs;
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -298,6 +422,8 @@ pub struct ProgressData {
     pub key_stats: HashMap<char, KeyStat>,
     pub session_history: Vec<SessionResult>,
     pub daily_minutes: HashMap<String, u32>,
+    #[serde(default)]
+    pub language_stats: HashMap<String, LanguageSpeedStat>,
 }
 
 impl Default for ProgressData {
@@ -313,6 +439,7 @@ impl Default for ProgressData {
             key_stats: HashMap::new(),
             session_history: Vec::new(),
             daily_minutes: HashMap::new(),
+            language_stats: HashMap::new(),
         }
     }
 }
@@ -356,6 +483,14 @@ impl ProgressData {
         let minutes = ((session.duration_secs as f64) / 60.0).ceil() as u32;
         self.record_daily_minutes(minutes.max(1));
 
+        if let Some(lang) = session.code_language {
+            let entry = self
+                .language_stats
+                .entry(lang.key().to_string())
+                .or_default();
+            entry.apply_session(&session);
+        }
+
         self.session_history.push(session);
         if self.session_history.len() > 300 {
             let trim = self.session_history.len() - 300;
@@ -381,6 +516,8 @@ pub struct SessionSummary {
     pub problematic_keys: Vec<char>,
     pub wpm_samples: Vec<f64>,
     pub unlocked_new_key: Option<char>,
+    pub code_language: Option<LanguageMode>,
+    pub code_topic: Option<CodeTopic>,
 }
 
 #[derive(Debug, Clone)]

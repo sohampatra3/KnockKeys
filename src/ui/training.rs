@@ -95,14 +95,12 @@ fn render_text_panel(frame: &mut Frame<'_>, area: Rect, app: &App, p: Palette) {
     }
 
     let text = Text::from(vec![Line::from(line)]);
-    let panel = Paragraph::new(text)
-        .wrap(Wrap { trim: false })
-        .block(
-            Block::default()
-                .title(" Target Text ")
-                .borders(Borders::ALL)
-                .style(Style::default().fg(p.text)),
-        );
+    let panel = Paragraph::new(text).wrap(Wrap { trim: false }).block(
+        Block::default()
+            .title(" Target Text ")
+            .borders(Borders::ALL)
+            .style(Style::default().fg(p.text)),
+    );
     frame.render_widget(panel, area);
 }
 
@@ -119,7 +117,10 @@ fn render_status_panel(frame: &mut Frame<'_>, area: Rect, app: &App, p: Palette)
     let mut lines = vec![
         Line::from(vec![
             Span::styled("WPM ", Style::default().fg(p.muted)),
-            Span::styled(format!("{:.1}", m.wpm), Style::default().fg(p.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{:.1}", m.wpm),
+                Style::default().fg(p.accent).add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
             Span::styled("CPM ", Style::default().fg(p.muted)),
@@ -127,7 +128,10 @@ fn render_status_panel(frame: &mut Frame<'_>, area: Rect, app: &App, p: Palette)
         ]),
         Line::from(vec![
             Span::styled("Accuracy ", Style::default().fg(p.muted)),
-            Span::styled(format!("{:.1}%", m.accuracy), Style::default().fg(p.success)),
+            Span::styled(
+                format!("{:.1}%", m.accuracy),
+                Style::default().fg(p.success),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Errors ", Style::default().fg(p.muted)),
@@ -177,9 +181,15 @@ fn render_coach_panel(frame: &mut Frame<'_>, area: Rect, app: &App, p: Palette) 
     let lines = vec![
         Line::from(vec![
             Span::styled("Next Key ", Style::default().fg(p.muted)),
-            Span::styled(next_key, Style::default().fg(p.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                next_key,
+                Style::default().fg(p.accent).add_modifier(Modifier::BOLD),
+            ),
             Span::styled("   Finger ", Style::default().fg(p.muted)),
-            Span::styled(finger, Style::default().fg(p.warning).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                finger,
+                Style::default().fg(p.warning).add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Guidance: ", Style::default().fg(p.muted)),
@@ -207,8 +217,12 @@ fn render_keyboard_panel(frame: &mut Frame<'_>, area: Rect, app: &App, p: Palett
     let target = session.next_target_char();
 
     let rows = vec![
-        vec!["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="],
-        vec!["q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\\"],
+        vec![
+            "`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=",
+        ],
+        vec![
+            "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\\",
+        ],
         vec!["a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'"],
         vec!["z", "x", "c", "v", "b", "n", "m", ",", ".", "/"],
         vec!["space"],
@@ -254,11 +268,17 @@ pub fn render_pause_overlay(frame: &mut Frame<'_>, app: &App, p: Palette) {
     for (idx, item) in PauseItem::ALL.iter().enumerate() {
         let selected = idx == app.pause_index;
         let style = if selected {
-            Style::default().fg(Color::Black).bg(p.accent).add_modifier(Modifier::BOLD)
+            Style::default()
+                .fg(Color::Black)
+                .bg(p.accent)
+                .add_modifier(Modifier::BOLD)
         } else {
             Style::default().fg(p.text)
         };
-        lines.push(Line::from(Span::styled(format!("  {}", item.title()), style)));
+        lines.push(Line::from(Span::styled(
+            format!("  {}", item.title()),
+            style,
+        )));
     }
 
     lines.push(Line::from(""));
@@ -284,7 +304,10 @@ fn key_style(key: char, target: Option<char>, p: Palette) -> Style {
     };
 
     if target_match {
-        return Style::default().fg(Color::Black).bg(p.accent).add_modifier(Modifier::BOLD);
+        return Style::default()
+            .fg(Color::Black)
+            .bg(p.accent)
+            .add_modifier(Modifier::BOLD);
     }
 
     if "asdfjkl;".contains(key) {

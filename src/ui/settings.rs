@@ -10,7 +10,11 @@ use ratatui::Frame;
 pub fn render_settings(frame: &mut Frame<'_>, app: &App, p: Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(10), Constraint::Length(4)])
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(10),
+            Constraint::Length(4),
+        ])
         .split(frame.size());
 
     let title = Paragraph::new("Settings")
@@ -30,7 +34,10 @@ pub fn render_settings(frame: &mut Frame<'_>, app: &App, p: Palette) {
             let value = setting_value(app, item);
             let selected = idx == app.settings_index;
             let style = if selected {
-                Style::default().fg(Color::Black).bg(p.accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(p.accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(p.text)
             };
@@ -86,9 +93,12 @@ fn setting_value(app: &App, item: &SettingsItem) -> String {
 fn setting_help(item: &SettingsItem, app: &App) -> String {
     match item {
         SettingsItem::ShowKeyboard => {
-            "Show an ASCII US-QWERTY keyboard and highlight the target key/finger zones.".to_string()
+            "Show an ASCII US-QWERTY keyboard and highlight the target key/finger zones."
+                .to_string()
         }
-        SettingsItem::Theme => "Switch between Ocean, Ember, and Forest terminal themes.".to_string(),
+        SettingsItem::Theme => {
+            "Switch between Ocean, Ember, and Forest terminal themes.".to_string()
+        }
         SettingsItem::Sound => {
             "Emit terminal bell on errors. Useful when focus is not on visual feedback.".to_string()
         }

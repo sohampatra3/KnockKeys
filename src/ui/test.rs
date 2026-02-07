@@ -10,7 +10,11 @@ use ratatui::Frame;
 pub fn render_config(frame: &mut Frame<'_>, app: &App, p: Palette) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Length(3), Constraint::Min(8), Constraint::Length(3)])
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Min(8),
+            Constraint::Length(3),
+        ])
         .split(frame.size());
 
     let title = Paragraph::new("Typing Test Configuration")
@@ -31,7 +35,10 @@ pub fn render_config(frame: &mut Frame<'_>, app: &App, p: Palette) {
         .map(|(idx, row)| {
             let selected = idx == app.test_config_index;
             let style = if selected {
-                Style::default().fg(Color::Black).bg(p.accent).add_modifier(Modifier::BOLD)
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(p.accent)
+                    .add_modifier(Modifier::BOLD)
             } else {
                 Style::default().fg(p.text)
             };
@@ -57,7 +64,8 @@ pub fn render_config(frame: &mut Frame<'_>, app: &App, p: Palette) {
 
 pub fn render_summary(frame: &mut Frame<'_>, app: &App, p: Palette) {
     let Some(summary) = &app.summary else {
-        let fallback = Paragraph::new("No session summary").block(Block::default().borders(Borders::ALL));
+        let fallback =
+            Paragraph::new("No session summary").block(Block::default().borders(Borders::ALL));
         frame.render_widget(fallback, frame.size());
         return;
     };
@@ -81,19 +89,31 @@ pub fn render_summary(frame: &mut Frame<'_>, app: &App, p: Palette) {
     let stat_lines = vec![
         Line::from(vec![
             Span::styled("WPM: ", Style::default().fg(p.muted)),
-            Span::styled(format!("{:.1}", summary.wpm), Style::default().fg(p.accent).add_modifier(Modifier::BOLD)),
+            Span::styled(
+                format!("{:.1}", summary.wpm),
+                Style::default().fg(p.accent).add_modifier(Modifier::BOLD),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Accuracy: ", Style::default().fg(p.muted)),
-            Span::styled(format!("{:.1}%", summary.accuracy), Style::default().fg(p.success)),
+            Span::styled(
+                format!("{:.1}%", summary.accuracy),
+                Style::default().fg(p.success),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Mistakes: ", Style::default().fg(p.muted)),
-            Span::styled(format!("{}", summary.mistakes), Style::default().fg(p.danger)),
+            Span::styled(
+                format!("{}", summary.mistakes),
+                Style::default().fg(p.danger),
+            ),
         ]),
         Line::from(vec![
             Span::styled("Duration: ", Style::default().fg(p.muted)),
-            Span::styled(format!("{}s", summary.duration_secs), Style::default().fg(p.text)),
+            Span::styled(
+                format!("{}s", summary.duration_secs),
+                Style::default().fg(p.text),
+            ),
         ]),
     ];
 
@@ -122,15 +142,32 @@ pub fn render_summary(frame: &mut Frame<'_>, app: &App, p: Palette) {
         .unwrap_or_else(|| "No new key unlocked this session".to_string());
 
     let recap = Paragraph::new(format!(
-        "Most problematic keys: {}\n{}\nLesson recap: accuracy drives speed. Keep shoulders relaxed and return to home row.",
-        problems, unlock
+        "Most problematic keys: {}\n{}\n{}\nLesson recap: accuracy drives speed. Keep shoulders relaxed and return to home row.",
+        problems,
+        unlock,
+        if let Some(lang) = summary.code_language {
+            format!(
+                "Code mode: {} / {}",
+                lang.title(),
+                summary
+                    .code_topic
+                    .map(|t| t.title().to_string())
+                    .unwrap_or_else(|| "Mixed".to_string())
+            )
+        } else {
+            "Mode details: General typing".to_string()
+        }
     ))
     .block(Block::default().title(" Recap ").borders(Borders::ALL));
     frame.render_widget(recap, chunks[2]);
 
     let points = metrics::sparkline_points(&summary.wpm_samples, chunks[3].width as usize - 2);
     let graph = Sparkline::default()
-        .block(Block::default().title(" WPM Over Time ").borders(Borders::ALL))
+        .block(
+            Block::default()
+                .title(" WPM Over Time ")
+                .borders(Borders::ALL),
+        )
         .data(&points)
         .style(Style::default().fg(p.accent));
     frame.render_widget(graph, chunks[3]);

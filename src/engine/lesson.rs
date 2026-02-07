@@ -6,18 +6,17 @@ use std::collections::HashMap;
 
 pub const HOME_ROW_START: &[char] = &['f', 'j', 'd', 'k', 's', 'l', 'a', ';'];
 pub const UNLOCK_SEQUENCE: &[char] = &[
-    'g', 'h', 'r', 'u', 'e', 'i', 'w', 'o', 'q', 'p', 't', 'y', 'v', 'm', 'c', 'n', 'x', 'b',
-    'z', ',', '.', '/', '[', ']', '\\', '-', '=', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-    '0',
+    'g', 'h', 'r', 'u', 'e', 'i', 'w', 'o', 'q', 'p', 't', 'y', 'v', 'm', 'c', 'n', 'x', 'b', 'z',
+    ',', '.', '/', '[', ']', '\\', '-', '=', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
 ];
 
 const WORDS: &[&str] = &[
-    "alpha", "binary", "cable", "drift", "ember", "frame", "globe", "honey", "input",
-    "jolly", "knock", "laser", "macro", "noble", "orbit", "pixel", "quiet", "river",
-    "scale", "tango", "union", "vivid", "whale", "xenon", "young", "zesty", "adapt",
-    "brisk", "clock", "delta", "event", "frost", "grain", "hover", "ideal", "jewel",
-    "karma", "linen", "meter", "north", "ocean", "prism", "query", "raven", "solid",
-    "trace", "urban", "verge", "woven", "yield", "zonal",
+    "alpha", "binary", "cable", "drift", "ember", "frame", "globe", "honey", "input", "jolly",
+    "knock", "laser", "macro", "noble", "orbit", "pixel", "quiet", "river", "scale", "tango",
+    "union", "vivid", "whale", "xenon", "young", "zesty", "adapt", "brisk", "clock", "delta",
+    "event", "frost", "grain", "hover", "ideal", "jewel", "karma", "linen", "meter", "north",
+    "ocean", "prism", "query", "raven", "solid", "trace", "urban", "verge", "woven", "yield",
+    "zonal",
 ];
 
 const QUOTES: &[&str] = &[
@@ -85,7 +84,12 @@ pub fn weakest_keys(progress: &ProgressData, limit: usize) -> Vec<char> {
     let mut keys: Vec<char> = scored.into_iter().take(limit).map(|(c, _)| c).collect();
 
     if keys.is_empty() {
-        keys = progress.unlocked_chars.iter().copied().take(limit).collect();
+        keys = progress
+            .unlocked_chars
+            .iter()
+            .copied()
+            .take(limit)
+            .collect();
     }
     if keys.is_empty() {
         keys = HOME_ROW_START.iter().copied().take(limit).collect();

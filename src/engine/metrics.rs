@@ -11,7 +11,11 @@ pub struct MetricSnapshot {
     pub elapsed_secs: u64,
 }
 
-pub fn compute_live(entries: &[TypedEntry], elapsed: Duration, blocked_errors: u64) -> MetricSnapshot {
+pub fn compute_live(
+    entries: &[TypedEntry],
+    elapsed: Duration,
+    blocked_errors: u64,
+) -> MetricSnapshot {
     let elapsed_secs = elapsed.as_secs().max(1);
     let total_typed = entries.len() as u64;
     let correct = entries.iter().filter(|e| e.correct).count() as u64;
