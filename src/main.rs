@@ -49,6 +49,9 @@ enum Command {
 }
 
 fn main() -> Result<()> {
+    // Load .env file if present (for GROQ_API_KEY, etc.)
+    let _ = dotenvy::dotenv();
+
     install_panic_hook();
     let cli = Cli::parse();
     let paths = default_paths()?;

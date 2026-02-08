@@ -1,79 +1,123 @@
-# TypeTrainer (Terminal TUI)
 
-A fully offline terminal typing trainer inspired by keybr.com, built with Rust, `ratatui`, and `crossterm`.
+<div align="center">
+  <img src="assets/banner.png" alt="KnockKeys Banner" width="100%" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
 
-## Build
+  <br>
+
+  # KnockKeys
+  **The Ultimate Terminal Typing Experience**
+
+  [![Rust](https://img.shields.io/badge/Made_with-Rust-orange?style=for-the-badge&logo=rust)](https://www.rust-lang.org/)
+  [![Terminal](https://img.shields.io/badge/Platform-Terminal-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ratatui-org/ratatui)
+  [![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+
+  <p align="center">
+    A fully offline, adaptive typing trainer inspired by keybr.com.<br>
+    Built for speed, privacy, and mastery.
+  </p>
+</div>
+
+---
+
+## ✨ Features
+
+KnockKeys brings a premium, distraction-free typing experience directly to your terminal.
+
+| feature | description |
+| :--- | :--- |
+| **🚀 Adaptive Learning** | Dynamic algorithms focus on your weak keys to optimize improvement. |
+| **🔒 100% Offline** | No data collection. Your progress stays on your machine. |
+| **🤖 AI Analytics** | Optional Groq/OpenAI integration for deep insights into your typing habits. |
+| **📊 Rich Metrics** | Detailed stats, WPM sparklines, and session recaps. |
+| **🎨 Beautiful Themes** | Choose from Ocean, Ember, Forest, Slate, Solarized, and Neon. |
+| **👨‍💻 Code Drill** | Practice typing actual code syntax in Rust, Python, Go, C++, and C. |
+
+<br>
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Rust & Cargo**: Ensure you have the Rust toolchain installed.
+- **Terminal**: A modern terminal emulator (iTerm2, Alacritty, Ghostty, etc.) with Nerd Font support recommended.
+
+### Building from Source
 
 ```bash
+# Clone the repository
+git clone https://github.com/Sohampatra1/KnockKeys.git
+cd KnockKeys
+
+# Build for release
 cargo build --release
 ```
 
-## Run
+### Running the App
 
 ```bash
 ./target/release/typetrainer
 ```
 
-## Optional AI analytics (Typing Guru report)
+<br>
 
-Set your API key before launching to enable the Home -> `Typing Guru AI Report` button:
+## 🧠 AI-Powered Insights
 
-```bash
-export GROQ_API_KEY=\"your_key_here\"
-./target/release/typetrainer
-```
+Unlock the **Typing Guru AI Report** to get personalized feedback on your typing form.
 
-Optional overrides:
+1.  **Configure API Key**: The project now supports a local `.env` file.
+    Create a `.env` file in the root directory (already configured if you used the setup script):
 
-```bash
-export TYPETRAINER_GROQ_MODEL=\"gpt-oss-120b\"
-export TYPETRAINER_GROQ_URL=\"https://api.groq.com/openai/v1/chat/completions\"
-```
+    ```env
+    GROQ_API_KEY="gsk_..."
+    ```
 
-## CLI utilities
+    *Alternatively, export it in your shell:*
 
-```bash
-./target/release/typetrainer export-csv
-./target/release/typetrainer backup
-./target/release/typetrainer import ~/.typetrainer/backups/progress-YYYYMMDD-HHMMSS.json
-```
+    ```bash
+    export GROQ_API_KEY="your_key_here"
+    ```
 
-## Data storage
+2.  **Launch**: Run the app, and select **"Typing Guru AI Report"** from the main menu.
 
-Progress is saved locally at:
+    > **Note**: You can also override the model and URL:
+    > ```bash
+    > export TYPETRAINER_GROQ_MODEL="gpt-oss-120b"
+    > export TYPETRAINER_GROQ_URL="https://api.groq.com/openai/v1/chat/completions"
+    > ```
 
-- `~/.typetrainer/progress.json`
-- backups: `~/.typetrainer/backups/`
-- CSV exports: `~/.typetrainer/exports/`
+<br>
 
-## Extra features included
+## 🛠️ CLI Utilities
 
-- Focus Mode (hides metrics sidebar while typing)
-- Weak Keys Drill mode
-- Daily Goal tracking (minutes per day)
-- Session recap screen with problematic keys and WPM sparkline
-- Export stats to CSV + backup/import JSON
-- Code Drill mode with per-language speed tracking:
-  - Languages: C++, C, Rust, Python, Go
-  - Topics: loops, if/else, sorting, searching, mixed
-- Lessons mode now includes:
-  - Mixed Keyboard Practice
-  - Full Keyboard Practice
-- Expanded themes: Ocean, Ember, Forest, Slate, Solarized, Neon
+KnockKeys isn't just a TUI; it's a powerful CLI tool for managing your data.
 
-## ASCII sample (home)
+- **Export Stats**:
+  ```bash
+  ./target/release/typetrainer export-csv
+  ```
 
-```text
-+-----------------------------------------------------------+
-| TypeTrainer - Adaptive Typing Coach                       |
-+-----------------------------------------------------------+
-| Daily Goal [####------] 4/10 min                          |
-+---------------------------+-------------------------------+
-| > Start Training          | Unlocked keys: fjdksla;       |
-|   Typing Test             | Best WPM: 42.7                |
-|   Lessons (Key Practice)  | Current streak: 3 day(s)      |
-|   Progress & Stats        | Recent sessions: ...          |
-|   Settings                |                               |
-|   Exit                    |                               |
-+---------------------------+-------------------------------+
-```
+- **Backup Data**:
+  ```bash
+  ./target/release/typetrainer backup
+  ```
+
+- **Import Backup**:
+  ```bash
+  ./target/release/typetrainer import ~/.typetrainer/backups/progress-YYYYMMDD-HHMMSS.json
+  ```
+
+<br>
+
+## 📂 Data Storage
+
+Your privacy is paramount. All data is stored locally:
+
+- **Progress**: `~/.typetrainer/progress.json`
+- **Backups**: `~/.typetrainer/backups/`
+- **CSV Exports**: `~/.typetrainer/exports/`
+
+---
+
+<div align="center">
+  <sub>Designed with ❤️ by Soham using Rust and Ratatui.</sub>
+</div>
