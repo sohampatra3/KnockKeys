@@ -81,7 +81,7 @@ pub fn render_home(frame: &mut Frame<'_>, app: &App, p: Palette) {
         .join("\n");
 
     let right = Paragraph::new(format!(
-        "Unlocked keys: {}\nBest WPM: {:.1}\nCurrent streak: {} day(s)\nTotal time: {} min\n\nRecent sessions:\n{}",
+        "Unlocked keys: {}\nBest WPM: {:.1}\nCurrent streak: {} day(s)\nTotal time: {} min\n\nAI coach: Typing Guru report button is available on Home.\n\nRecent sessions:\n{}",
         app.progress.unlocked_chars.iter().collect::<String>(),
         app.progress.best_wpm,
         streak,
@@ -162,6 +162,12 @@ pub fn render_lessons(frame: &mut Frame<'_>, app: &App, p: Palette) {
         }
         LessonItem::TopRow => "Reach training for top row keys.\nKeys: q w e r t y u i o p [ ] \\",
         LessonItem::BottomRow => "Reach training for bottom row keys.\nKeys: z x c v b n m , . /",
+        LessonItem::MixedKeyboard => {
+            "Balanced practice across home/top/bottom rows for overall transition speed."
+        }
+        LessonItem::FullKeyboard => {
+            "Full keyboard set including letters, digits, and common coding punctuation."
+        }
         LessonItem::WeakKeysDrill => {
             "Adaptive drill that targets your slowest and most error-prone keys."
         }

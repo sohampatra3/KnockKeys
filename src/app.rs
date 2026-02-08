@@ -1,4 +1,4 @@
-use crate::engine::{code, lesson, metrics};
+use crate::engine::{code, lesson, llm, metrics};
 use crate::input::keys::{translate, Action};
 use crate::models::{
     CodeConfig, HomeItem, LessonItem, PauseItem, ProgressData, Screen, SessionMode, SessionResult,
@@ -88,6 +88,9 @@ pub struct App {
     pub progress: ProgressData,
     pub test_config: TestConfig,
     pub code_config: CodeConfig,
+    pub ai_report: Option<String>,
+    pub ai_scroll: usize,
+    pub ai_pending: bool,
     pub active_session: Option<ActiveSession>,
     pub summary: Option<SessionSummary>,
     pub notification: Option<(String, Instant)>,
@@ -113,6 +116,9 @@ impl App {
             progress: state.progress,
             test_config: state.test_config,
             code_config: state.code_config,
+            ai_report: None,
+            ai_scroll: 0,
+            ai_pending: false,
             active_session: None,
             summary: None,
             notification: None,
@@ -230,6 +236,9 @@ impl App {
                     self.code_config_index - 1
                 }
             }
+            Screen::AiInsights => {
+                self.ai_scroll = self.ai_scroll.saturating_sub(1);
+            }
             _ => {}
         }
     }
@@ -244,6 +253,7 @@ impl App {
             Screen::Pause => self.pause_index = (self.pause_index + 1) % PauseItem::ALL.len(),
             Screen::TypingTestConfig => self.test_config_index = (self.test_config_index + 1) % 4,
             Screen::CodeConfig => self.code_config_index = (self.code_config_index + 1) % 4,
+            Screen::AiInsights => self.ai_scroll = self.ai_scroll.saturating_add(1),
             _ => {}
         }
     }
@@ -338,6 +348,7 @@ impl App {
             Screen::Pause => self.select_pause(),
             Screen::TypingTestConfig => self.select_test_config(),
             Screen::CodeConfig => self.select_code_config(),
+            Screen::AiInsights => self.request_ai_report_now(),
             Screen::SessionSummary => {
                 self.summary = None;
                 self.screen = Screen::Home;
@@ -354,6 +365,7 @@ impl App {
             HomeItem::TypingTest => self.screen = Screen::TypingTestConfig,
             HomeItem::Lessons => self.screen = Screen::Lessons,
             HomeItem::Progress => self.screen = Screen::Progress,
+            HomeItem::AiGuruReport => self.start_ai_report(),
             HomeItem::Settings => self.screen = Screen::Settings,
             HomeItem::Exit => {
                 self.running = false;
@@ -376,6 +388,16 @@ impl App {
             LessonItem::BottomRow => self.start_lesson(
                 lesson::lesson_bottom_row(),
                 "Bottom Row Focus",
+                SessionMode::LessonPractice,
+            ),
+            LessonItem::MixedKeyboard => self.start_lesson(
+                lesson::lesson_mixed_keyboard(),
+                "Mixed Keyboard Practice",
+                SessionMode::LessonPractice,
+            ),
+            LessonItem::FullKeyboard => self.start_lesson(
+                lesson::lesson_full_keyboard(),
+                "Full Keyboard Practice",
                 SessionMode::LessonPractice,
             ),
             LessonItem::WeakKeysDrill => self.start_weak_keys_drill(),
@@ -453,6 +475,7 @@ impl App {
             }
             Screen::Lessons
             | Screen::Progress
+            | Screen::AiInsights
             | Screen::Settings
             | Screen::TypingTestConfig
             | Screen::CodeConfig => self.screen = Screen::Home,
@@ -554,6 +577,32 @@ impl App {
             text,
             None,
         );
+    }
+
+    fn start_ai_report(&mut self) {
+        self.ai_scroll = 0;
+        self.ai_report = Some("Generating Typing Guru report...".to_string());
+        self.ai_pending = true;
+        self.screen = Screen::AiInsights;
+    }
+
+    fn request_ai_report_now(&mut self) {
+        self.ai_pending = false;
+        match llm::request_typing_guru_report(&self.progress, &self.settings) {
+            Ok(report) => {
+                self.ai_report = Some(report);
+                self.ai_scroll = 0;
+                self.set_notice("Typing Guru report updated");
+            }
+            Err(err) => {
+                let fallback = llm::local_analytics_report(&self.progress, &self.settings);
+                self.ai_report = Some(format!(
+                    "Live API report unavailable ({err}).\n\n{fallback}"
+                ));
+                self.ai_scroll = 0;
+                self.set_notice("API unavailable. Showing offline analytics");
+            }
+        }
     }
 
     fn start_session(
@@ -746,6 +795,10 @@ impl App {
     }
 
     pub fn on_tick(&mut self) {
+        if self.ai_pending {
+            self.request_ai_report_now();
+        }
+
         if let Some((_, at)) = &self.notification {
             if at.elapsed() > Duration::from_secs(4) {
                 self.notification = None;

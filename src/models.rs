@@ -11,6 +11,7 @@ pub enum Screen {
     TypingTest,
     Lessons,
     Progress,
+    AiInsights,
     Settings,
     Pause,
     SessionSummary,
@@ -23,17 +24,19 @@ pub enum HomeItem {
     TypingTest,
     Lessons,
     Progress,
+    AiGuruReport,
     Settings,
     Exit,
 }
 
 impl HomeItem {
-    pub const ALL: [HomeItem; 7] = [
+    pub const ALL: [HomeItem; 8] = [
         HomeItem::StartTraining,
         HomeItem::CodeDrill,
         HomeItem::TypingTest,
         HomeItem::Lessons,
         HomeItem::Progress,
+        HomeItem::AiGuruReport,
         HomeItem::Settings,
         HomeItem::Exit,
     ];
@@ -45,6 +48,7 @@ impl HomeItem {
             HomeItem::TypingTest => "Typing Test",
             HomeItem::Lessons => "Lessons (Key Practice)",
             HomeItem::Progress => "Progress & Stats",
+            HomeItem::AiGuruReport => "Typing Guru AI Report",
             HomeItem::Settings => "Settings",
             HomeItem::Exit => "Exit",
         }
@@ -75,15 +79,19 @@ pub enum LessonItem {
     GuidedHomeRow,
     TopRow,
     BottomRow,
+    MixedKeyboard,
+    FullKeyboard,
     WeakKeysDrill,
     Back,
 }
 
 impl LessonItem {
-    pub const ALL: [LessonItem; 5] = [
+    pub const ALL: [LessonItem; 7] = [
         LessonItem::GuidedHomeRow,
         LessonItem::TopRow,
         LessonItem::BottomRow,
+        LessonItem::MixedKeyboard,
+        LessonItem::FullKeyboard,
         LessonItem::WeakKeysDrill,
         LessonItem::Back,
     ];
@@ -93,6 +101,8 @@ impl LessonItem {
             LessonItem::GuidedHomeRow => "Guided Home Row",
             LessonItem::TopRow => "Top Row Focus",
             LessonItem::BottomRow => "Bottom Row Focus",
+            LessonItem::MixedKeyboard => "Mixed Keyboard Practice",
+            LessonItem::FullKeyboard => "Full Keyboard Practice",
             LessonItem::WeakKeysDrill => "Weak Keys Drill",
             LessonItem::Back => "Back",
         }

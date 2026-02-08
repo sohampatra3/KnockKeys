@@ -14,6 +14,22 @@ cargo build --release
 ./target/release/typetrainer
 ```
 
+## Optional AI analytics (Typing Guru report)
+
+Set your API key before launching to enable the Home -> `Typing Guru AI Report` button:
+
+```bash
+export GROQ_API_KEY=\"your_key_here\"
+./target/release/typetrainer
+```
+
+Optional overrides:
+
+```bash
+export TYPETRAINER_GROQ_MODEL=\"gpt-oss-120b\"
+export TYPETRAINER_GROQ_URL=\"https://api.groq.com/openai/v1/chat/completions\"
+```
+
 ## CLI utilities
 
 ```bash
@@ -40,6 +56,9 @@ Progress is saved locally at:
 - Code Drill mode with per-language speed tracking:
   - Languages: C++, C, Rust, Python, Go
   - Topics: loops, if/else, sorting, searching, mixed
+- Lessons mode now includes:
+  - Mixed Keyboard Practice
+  - Full Keyboard Practice
 - Expanded themes: Ocean, Ember, Forest, Slate, Solarized, Neon
 
 ## ASCII sample (home)

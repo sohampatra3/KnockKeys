@@ -1,3 +1,4 @@
+pub mod ai;
 pub mod code;
 pub mod home;
 pub mod settings;
@@ -96,6 +97,7 @@ pub fn render(frame: &mut Frame<'_>, app: &App) {
         Screen::Home => home::render_home(frame, app, p),
         Screen::Lessons => home::render_lessons(frame, app, p),
         Screen::CodeConfig => code::render_code_config(frame, app, p),
+        Screen::AiInsights => ai::render_ai_insights(frame, app, p),
         Screen::Training | Screen::TypingTest => training::render_session(frame, app, p),
         Screen::TypingTestConfig => test::render_config(frame, app, p),
         Screen::Progress => stats::render_progress(frame, app, p),

@@ -149,6 +149,16 @@ pub fn lesson_bottom_row() -> Vec<char> {
     "zxcvbnm,./".chars().collect()
 }
 
+pub fn lesson_mixed_keyboard() -> Vec<char> {
+    "asdfjkl;qwertyuiopzxcvbnm,./".chars().collect()
+}
+
+pub fn lesson_full_keyboard() -> Vec<char> {
+    "abcdefghijklmnopqrstuvwxyz0123456789[]\\;',./-=`"
+        .chars()
+        .collect()
+}
+
 pub fn weakest_keys(progress: &ProgressData, limit: usize) -> Vec<char> {
     let mut scored: Vec<(char, f64)> = progress
         .key_stats
