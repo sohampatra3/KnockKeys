@@ -1,9 +1,9 @@
 use crate::engine::{code, lesson, llm, metrics};
 use crate::input::keys::{translate, Action};
 use crate::models::{
-    CodeConfig, HomeItem, LessonItem, PauseItem, ProgressData, Screen, SessionMode, SessionResult,
-    SessionSummary, Settings, SettingsItem, TestConfig, TestDuration, TestTextType,
-    TrainingDifficulty, TypedEntry,
+    AiConfig, AiProvider, CodeConfig, HomeItem, LessonItem, PauseItem, ProgressData, Screen,
+    SessionMode, SessionResult, SessionSummary, Settings, SettingsItem, TestConfig, TestDuration,
+    TestTextType, TrainingDifficulty, TypedEntry,
 };
 use crate::storage::persistence::{
     backup_progress, export_sessions_csv, import_progress, latest_backup, save_state,
@@ -84,10 +84,12 @@ pub struct App {
     pub pause_index: usize,
     pub test_config_index: usize,
     pub code_config_index: usize,
+    pub ai_field_index: usize,
     pub settings: Settings,
     pub progress: ProgressData,
     pub test_config: TestConfig,
     pub code_config: CodeConfig,
+    pub ai_config: AiConfig,
     pub ai_report: Option<String>,
     pub ai_scroll: usize,
     pub ai_pending: bool,
@@ -112,10 +114,12 @@ impl App {
             pause_index: 0,
             test_config_index: 0,
             code_config_index: 0,
+            ai_field_index: 0,
             settings: state.settings,
             progress: state.progress,
             test_config: state.test_config,
             code_config: state.code_config,
+            ai_config: state.ai_config,
             ai_report: None,
             ai_scroll: 0,
             ai_pending: false,
@@ -139,6 +143,7 @@ impl App {
             progress: self.progress.clone(),
             test_config: self.test_config.clone(),
             code_config: self.code_config.clone(),
+            ai_config: self.ai_config.clone(),
         }
     }
 
@@ -237,7 +242,11 @@ impl App {
                 }
             }
             Screen::AiInsights => {
-                self.ai_scroll = self.ai_scroll.saturating_sub(1);
+                self.ai_field_index = if self.ai_field_index == 0 {
+                    AI_FIELD_COUNT - 1
+                } else {
+                    self.ai_field_index - 1
+                };
             }
             _ => {}
         }
@@ -253,7 +262,7 @@ impl App {
             Screen::Pause => self.pause_index = (self.pause_index + 1) % PauseItem::ALL.len(),
             Screen::TypingTestConfig => self.test_config_index = (self.test_config_index + 1) % 4,
             Screen::CodeConfig => self.code_config_index = (self.code_config_index + 1) % 4,
-            Screen::AiInsights => self.ai_scroll = self.ai_scroll.saturating_add(1),
+            Screen::AiInsights => self.ai_field_index = (self.ai_field_index + 1) % AI_FIELD_COUNT,
             _ => {}
         }
     }
@@ -262,6 +271,7 @@ impl App {
         match self.screen {
             Screen::TypingTestConfig => self.adjust_test_config(forward),
             Screen::CodeConfig => self.adjust_code_config(forward),
+            Screen::AiInsights => self.adjust_ai(forward),
             Screen::Settings => self.adjust_setting(forward),
             _ => {}
         }
@@ -292,6 +302,24 @@ impl App {
                 self.save();
             }
             _ => {}
+        }
+    }
+
+    fn adjust_ai(&mut self, forward: bool) {
+        if self.ai_field_index == AI_FIELD_PROVIDER {
+            self.ai_config.provider = cycle_ai_provider(self.ai_config.provider, forward);
+            self.ai_config.base_url = self.ai_config.provider.default_base_url().to_string();
+            self.ai_config.model = self.ai_config.provider.default_model().to_string();
+            self.save();
+            return;
+        }
+
+        if self.ai_field_index == AI_FIELD_SCROLL {
+            if forward {
+                self.ai_scroll = self.ai_scroll.saturating_add(2);
+            } else {
+                self.ai_scroll = self.ai_scroll.saturating_sub(2);
+            }
         }
     }
 
@@ -348,7 +376,7 @@ impl App {
             Screen::Pause => self.select_pause(),
             Screen::TypingTestConfig => self.select_test_config(),
             Screen::CodeConfig => self.select_code_config(),
-            Screen::AiInsights => self.request_ai_report_now(),
+            Screen::AiInsights => self.select_ai(),
             Screen::SessionSummary => {
                 self.summary = None;
                 self.screen = Screen::Home;
@@ -444,6 +472,8 @@ impl App {
                         self.settings = state.settings;
                         self.progress = state.progress;
                         self.test_config = state.test_config;
+                        self.code_config = state.code_config;
+                        self.ai_config = state.ai_config;
                         self.set_notice(format!("Imported: {}", path.display()));
                     }
                     Err(err) => self.set_notice(format!("Import failed: {err}")),
@@ -453,6 +483,26 @@ impl App {
             },
             SettingsItem::Back => self.screen = Screen::Home,
             _ => self.adjust_setting(true),
+        }
+    }
+
+    fn select_ai(&mut self) {
+        match self.ai_field_index {
+            AI_FIELD_PROVIDER => {
+                self.ai_config.provider = cycle_ai_provider(self.ai_config.provider, true);
+                self.ai_config.base_url = self.ai_config.provider.default_base_url().to_string();
+                self.ai_config.model = self.ai_config.provider.default_model().to_string();
+                self.save();
+            }
+            AI_FIELD_GENERATE => {
+                self.ai_pending = true;
+                self.ai_report = Some("Generating Typing Guru report...".to_string());
+            }
+            AI_FIELD_BACK => {
+                self.ai_pending = false;
+                self.screen = Screen::Home;
+            }
+            _ => {}
         }
     }
 
@@ -475,10 +525,13 @@ impl App {
             }
             Screen::Lessons
             | Screen::Progress
-            | Screen::AiInsights
             | Screen::Settings
             | Screen::TypingTestConfig
             | Screen::CodeConfig => self.screen = Screen::Home,
+            Screen::AiInsights => {
+                self.ai_pending = false;
+                self.screen = Screen::Home;
+            }
             Screen::Pause => self.resume_current(),
             Screen::SessionSummary => {
                 self.summary = None;
@@ -581,14 +634,24 @@ impl App {
 
     fn start_ai_report(&mut self) {
         self.ai_scroll = 0;
-        self.ai_report = Some("Generating Typing Guru report...".to_string());
-        self.ai_pending = true;
         self.screen = Screen::AiInsights;
+        if self.ai_config.api_key.trim().is_empty() {
+            self.ai_field_index = AI_FIELD_API_KEY;
+            self.ai_report = Some(
+                "Paste your API key, confirm provider/base URL/model, then select Generate Report."
+                    .to_string(),
+            );
+            self.ai_pending = false;
+        } else {
+            self.ai_field_index = AI_FIELD_GENERATE;
+            self.ai_report = Some("Generating Typing Guru report...".to_string());
+            self.ai_pending = true;
+        }
     }
 
     fn request_ai_report_now(&mut self) {
         self.ai_pending = false;
-        match llm::request_typing_guru_report(&self.progress, &self.settings) {
+        match llm::request_typing_guru_report(&self.progress, &self.settings, &self.ai_config) {
             Ok(report) => {
                 self.ai_report = Some(report);
                 self.ai_scroll = 0;
@@ -602,6 +665,46 @@ impl App {
                 self.ai_scroll = 0;
                 self.set_notice("API unavailable. Showing offline analytics");
             }
+        }
+    }
+
+    fn handle_ai_char(&mut self, c: char) {
+        if c.is_control() {
+            return;
+        }
+
+        match self.ai_field_index {
+            AI_FIELD_API_KEY => {
+                self.ai_config.api_key.push(c);
+                self.save();
+            }
+            AI_FIELD_BASE_URL => {
+                self.ai_config.base_url.push(c);
+                self.save();
+            }
+            AI_FIELD_MODEL => {
+                self.ai_config.model.push(c);
+                self.save();
+            }
+            _ => {}
+        }
+    }
+
+    fn handle_ai_backspace(&mut self) {
+        match self.ai_field_index {
+            AI_FIELD_API_KEY => {
+                self.ai_config.api_key.pop();
+                self.save();
+            }
+            AI_FIELD_BASE_URL => {
+                self.ai_config.base_url.pop();
+                self.save();
+            }
+            AI_FIELD_MODEL => {
+                self.ai_config.model.pop();
+                self.save();
+            }
+            _ => {}
         }
     }
 
@@ -649,6 +752,11 @@ impl App {
     }
 
     fn handle_char(&mut self, input_char: char) {
+        if self.screen == Screen::AiInsights {
+            self.handle_ai_char(input_char);
+            return;
+        }
+
         if self.screen != Screen::Training && self.screen != Screen::TypingTest {
             return;
         }
@@ -733,6 +841,11 @@ impl App {
     }
 
     fn handle_backspace(&mut self) {
+        if self.screen == Screen::AiInsights {
+            self.handle_ai_backspace();
+            return;
+        }
+
         if self.screen != Screen::Training && self.screen != Screen::TypingTest {
             return;
         }
@@ -894,6 +1007,15 @@ impl App {
     }
 }
 
+pub(crate) const AI_FIELD_PROVIDER: usize = 0;
+pub(crate) const AI_FIELD_API_KEY: usize = 1;
+pub(crate) const AI_FIELD_BASE_URL: usize = 2;
+pub(crate) const AI_FIELD_MODEL: usize = 3;
+pub(crate) const AI_FIELD_SCROLL: usize = 4;
+pub(crate) const AI_FIELD_GENERATE: usize = 5;
+pub(crate) const AI_FIELD_BACK: usize = 6;
+pub(crate) const AI_FIELD_COUNT: usize = 7;
+
 fn cycle_duration(current: TestDuration, forward: bool) -> TestDuration {
     let idx = TestDuration::ALL
         .iter()
@@ -964,6 +1086,18 @@ fn cycle_language(
 fn cycle_code_topic(current: crate::models::CodeTopic, forward: bool) -> crate::models::CodeTopic {
     use crate::models::CodeTopic;
     let all = CodeTopic::ALL;
+    let idx = all.iter().position(|v| *v == current).unwrap_or(0);
+    if forward {
+        all[(idx + 1) % all.len()]
+    } else if idx == 0 {
+        all[all.len() - 1]
+    } else {
+        all[idx - 1]
+    }
+}
+
+fn cycle_ai_provider(current: AiProvider, forward: bool) -> AiProvider {
+    let all = AiProvider::ALL;
     let idx = all.iter().position(|v| *v == current).unwrap_or(0);
     if forward {
         all[(idx + 1) % all.len()]

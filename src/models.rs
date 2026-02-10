@@ -318,6 +318,57 @@ impl Default for CodeConfig {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AiProvider {
+    Groq,
+    OpenAICompatible,
+}
+
+impl AiProvider {
+    pub const ALL: [AiProvider; 2] = [AiProvider::Groq, AiProvider::OpenAICompatible];
+
+    pub fn title(self) -> &'static str {
+        match self {
+            AiProvider::Groq => "Groq",
+            AiProvider::OpenAICompatible => "OpenAI-Compatible",
+        }
+    }
+
+    pub fn default_base_url(self) -> &'static str {
+        match self {
+            AiProvider::Groq => "https://api.groq.com/openai/v1/chat/completions",
+            AiProvider::OpenAICompatible => "https://api.openai.com/v1/chat/completions",
+        }
+    }
+
+    pub fn default_model(self) -> &'static str {
+        match self {
+            AiProvider::Groq => "gpt-oss-120b",
+            AiProvider::OpenAICompatible => "gpt-4o-mini",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AiConfig {
+    pub provider: AiProvider,
+    #[serde(default)]
+    pub api_key: String,
+    pub base_url: String,
+    pub model: String,
+}
+
+impl Default for AiConfig {
+    fn default() -> Self {
+        Self {
+            provider: AiProvider::Groq,
+            api_key: String::new(),
+            base_url: AiProvider::Groq.default_base_url().to_string(),
+            model: AiProvider::Groq.default_model().to_string(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Settings {
     pub show_keyboard: bool,

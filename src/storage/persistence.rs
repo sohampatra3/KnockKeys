@@ -1,4 +1,4 @@
-use crate::models::{CodeConfig, ProgressData, Settings, TestConfig};
+use crate::models::{AiConfig, CodeConfig, ProgressData, Settings, TestConfig};
 use anyhow::{Context, Result};
 use chrono::Local;
 use csv::Writer;
@@ -22,6 +22,8 @@ pub struct PersistedState {
     pub test_config: TestConfig,
     #[serde(default)]
     pub code_config: CodeConfig,
+    #[serde(default)]
+    pub ai_config: AiConfig,
 }
 
 impl Default for PersistedState {
@@ -31,6 +33,7 @@ impl Default for PersistedState {
             progress: ProgressData::default(),
             test_config: TestConfig::default(),
             code_config: CodeConfig::default(),
+            ai_config: AiConfig::default(),
         }
     }
 }

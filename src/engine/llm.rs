@@ -1,4 +1,4 @@
-use crate::models::{ProgressData, Settings};
+use crate::models::{AiConfig, AiProvider, ProgressData, Settings};
 use anyhow::{anyhow, Context, Result};
 use serde_json::json;
 use std::env;
@@ -7,13 +7,19 @@ use std::time::Duration;
 const DEFAULT_GROQ_URL: &str = "https://api.groq.com/openai/v1/chat/completions";
 const DEFAULT_MODEL: &str = "gpt-oss-120b";
 
-pub fn request_typing_guru_report(progress: &ProgressData, settings: &Settings) -> Result<String> {
-    let api_key = resolve_api_key().ok_or_else(|| {
-        anyhow!("Missing API key. Set GROQ_API_KEY or TYPETRAINER_GROQ_API_KEY in your shell.")
+pub fn request_typing_guru_report(
+    progress: &ProgressData,
+    settings: &Settings,
+    ai_config: &AiConfig,
+) -> Result<String> {
+    let api_key = resolve_api_key(ai_config).ok_or_else(|| {
+        anyhow!(
+            "Missing API key. Paste it in Typing Guru AI screen or set provider-specific env vars."
+        )
     })?;
 
-    let url = env::var("TYPETRAINER_GROQ_URL").unwrap_or_else(|_| DEFAULT_GROQ_URL.to_string());
-    let model = env::var("TYPETRAINER_GROQ_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string());
+    let url = resolve_url(ai_config);
+    let model = resolve_model(ai_config);
 
     let system_prompt = "You are Typing Guru, an elite typing coach for software engineers. Analyze metrics deeply and give practical drills. Focus on measurable improvements and coding-specific typing efficiency.";
     let user_prompt = build_prompt(progress, settings);
@@ -111,17 +117,57 @@ pub fn local_analytics_report(progress: &ProgressData, settings: &Settings) -> S
     let drills = improvement_drills(&error_keys, &slow_keys);
 
     format!(
-        "Typing Guru Offline Analytics\n\nOverview\n- Sessions: {total_sessions}\n- Total practice: {total_minutes} min\n- Best WPM: {:.1}\n- Last 10 avg WPM: {avg_last10_wpm:.1}\n- Last 10 avg Accuracy: {avg_last10_acc:.1}%\n- Unlock threshold: {:.0}% acc / {:.0} WPM\n\nWeakest keys (highest error %)\n{top_errors}\n\nSlowest keys (highest avg ms)\n{top_slow}\n\nCode language speed\n{lang_summary}\n\nImprovement tricks\n{drills}\n\nTo enable full AI report: export GROQ_API_KEY in your shell and reopen the app.",
+        "Typing Guru Offline Analytics\n\nOverview\n- Sessions: {total_sessions}\n- Total practice: {total_minutes} min\n- Best WPM: {:.1}\n- Last 10 avg WPM: {avg_last10_wpm:.1}\n- Last 10 avg Accuracy: {avg_last10_acc:.1}%\n- Unlock threshold: {:.0}% acc / {:.0} WPM\n\nWeakest keys (highest error %)\n{top_errors}\n\nSlowest keys (highest avg ms)\n{top_slow}\n\nCode language speed\n{lang_summary}\n\nImprovement tricks\n{drills}\n\nTo enable full AI report: open Typing Guru AI from Home, choose provider, paste API key, then generate.",
         progress.best_wpm,
         settings.unlock_accuracy_threshold,
         settings.unlock_wpm_threshold,
     )
 }
 
-fn resolve_api_key() -> Option<String> {
-    env::var("GROQ_API_KEY")
+fn resolve_api_key(ai_config: &AiConfig) -> Option<String> {
+    let key = ai_config.api_key.trim();
+    if !key.is_empty() {
+        return Some(key.to_string());
+    }
+
+    env::var("TYPETRAINER_API_KEY")
         .ok()
-        .or_else(|| env::var("TYPETRAINER_GROQ_API_KEY").ok())
+        .or_else(|| match ai_config.provider {
+            AiProvider::Groq => env::var("GROQ_API_KEY")
+                .ok()
+                .or_else(|| env::var("TYPETRAINER_GROQ_API_KEY").ok()),
+            AiProvider::OpenAICompatible => env::var("OPENAI_API_KEY")
+                .ok()
+                .or_else(|| env::var("TYPETRAINER_OPENAI_API_KEY").ok()),
+        })
+}
+
+fn resolve_url(ai_config: &AiConfig) -> String {
+    let configured = ai_config.base_url.trim();
+    if !configured.is_empty() {
+        return configured.to_string();
+    }
+    match ai_config.provider {
+        AiProvider::Groq => {
+            env::var("TYPETRAINER_GROQ_URL").unwrap_or_else(|_| DEFAULT_GROQ_URL.to_string())
+        }
+        AiProvider::OpenAICompatible => env::var("TYPETRAINER_OPENAI_URL")
+            .unwrap_or_else(|_| AiProvider::OpenAICompatible.default_base_url().to_string()),
+    }
+}
+
+fn resolve_model(ai_config: &AiConfig) -> String {
+    let configured = ai_config.model.trim();
+    if !configured.is_empty() {
+        return configured.to_string();
+    }
+    match ai_config.provider {
+        AiProvider::Groq => {
+            env::var("TYPETRAINER_GROQ_MODEL").unwrap_or_else(|_| DEFAULT_MODEL.to_string())
+        }
+        AiProvider::OpenAICompatible => env::var("TYPETRAINER_OPENAI_MODEL")
+            .unwrap_or_else(|_| AiProvider::OpenAICompatible.default_model().to_string()),
+    }
 }
 
 fn build_prompt(progress: &ProgressData, settings: &Settings) -> String {

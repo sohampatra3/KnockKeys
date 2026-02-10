@@ -24,6 +24,7 @@ pub fn translate(event: KeyEvent, screen: Screen) -> Action {
     match screen {
         Screen::Training | Screen::TypingTest => translate_typing(event),
         Screen::Pause => translate_pause(event),
+        Screen::AiInsights => translate_ai(event),
         _ => translate_menu(event),
     }
 }
@@ -64,6 +65,30 @@ fn translate_typing(event: KeyEvent) -> Action {
         KeyCode::Backspace => Action::Backspace,
         KeyCode::Enter => Action::Char('\n'),
         KeyCode::Tab => Action::Char('\t'),
+        KeyCode::Char(c) => {
+            if event.modifiers.contains(KeyModifiers::CONTROL) {
+                if c == 'q' {
+                    return Action::Quit;
+                }
+                return Action::None;
+            }
+            Action::Char(c)
+        }
+        _ => Action::None,
+    }
+}
+
+fn translate_ai(event: KeyEvent) -> Action {
+    match event.code {
+        KeyCode::Up => Action::Up,
+        KeyCode::Down => Action::Down,
+        KeyCode::Left => Action::Left,
+        KeyCode::Right => Action::Right,
+        KeyCode::Tab => Action::Down,
+        KeyCode::BackTab => Action::Up,
+        KeyCode::Enter => Action::Select,
+        KeyCode::Esc => Action::Back,
+        KeyCode::Backspace => Action::Backspace,
         KeyCode::Char(c) => {
             if event.modifiers.contains(KeyModifiers::CONTROL) {
                 if c == 'q' {

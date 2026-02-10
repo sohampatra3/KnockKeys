@@ -30,8 +30,9 @@ const QUOTES: &[&str] = &[
 ];
 
 pub fn coach_hint(target: char) -> (String, String) {
-    let finger = finger_for_char(target).to_string();
     let base = primary_key_for_char(target);
+    let base_finger = finger_for_char(target);
+    let mut finger = base_finger.to_string();
     let mut guidance = if "asdfjkl;".contains(base) {
         "Home row anchor".to_string()
     } else if "qwertyuiop[]\\1234567890-=`".contains(base) {
@@ -45,12 +46,13 @@ pub fn coach_hint(target: char) -> (String, String) {
     };
 
     if requires_shift(target) {
-        let shift = match key_hand(base) {
-            Some(Hand::Left) => "Use Right Shift (right pinky)",
-            Some(Hand::Right) => "Use Left Shift (left pinky)",
-            None => "Use opposite-hand Shift",
+        let shift_finger = match key_hand(base) {
+            Some(Hand::Left) => "Right pinky (Shift)",
+            Some(Hand::Right) => "Left pinky (Shift)",
+            None => "Opposite-hand Shift",
         };
-        guidance = format!("{guidance}; {shift}");
+        finger = format!("{base_finger} + {shift_finger}");
+        guidance = format!("{guidance}; use opposite-hand Shift");
     }
 
     (finger, guidance)
